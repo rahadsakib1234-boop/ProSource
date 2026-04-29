@@ -5,6 +5,7 @@
   "author": "Sakib Hossain",
   "main": "main.js",
   "scripts": {
+    "license:gen": "node generate-license.mjs"
     "start": "electron .",
     "make": "electron-forge make"
   },
