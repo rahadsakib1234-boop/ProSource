@@ -1,0 +1,30 @@
+ProSource CRM Software License Agreement
+
+Copyright © 2025 [Your Full Name]. All rights reserved.
+
+1. GRANT OF LICENSE
+   Sakib Hossain grants you a non-exclusive, non-transferable license 
+   to install and use ProSource CRM on up to 2 computers owned by you.
+
+2. RESTRICTIONS
+   You may not:
+   - Share, sell, or distribute this software
+   - Modify, reverse engineer, or decompile the software
+   - Remove copyright or license notices
+
+3. TERMINATION
+   This license is effective until terminated. Violation of any term 
+   automatically terminates your license.
+
+4. DISCLAIMER
+   This software is provided "as is" without warranties of any kind.
+
+5. GOVERNING LAW
+   This agreement shall be governed by the laws of Bangladesh.
+
+For questions: h0ssainsakib@qq.com
+
+---
+License Key: _______________
+Licensed to: _______________
+Date: _______________
