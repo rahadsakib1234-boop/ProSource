@@ -2588,10 +2588,10 @@ function renderPipeline() {
 //  INVOICES
 // ══════════════════════════════════════════════════
 let _invoicePayStatus = 'unpaid';
-const INVOICE_DRAFT_KEY = 'ps_invoice_draft_v1';
-let _invoiceDraftTimer = null;
 let _clientMap = new Map();
 let _productsByClient = new Map();
+const INVOICE_DRAFT_KEY = 'ps_invoice_draft_v1';
+let _invoiceDraftTimer = null;
 
 function rebuildFastMaps() {
   _clientMap = new Map(_clients.map(c => [c.id, c]));
@@ -2606,68 +2606,14 @@ function rebuildFastMaps() {
 function upsertInvoiceLocal(saved) {
   const idx = _invoices.findIndex(i => i.id === saved.id);
   if (idx >= 0) _invoices[idx] = saved;
-  else _invoices.push(saved);
-}
-
-function getInvoiceDraft() {
-  return {
-    editId: document.getElementById('inv-editId').value.trim(),
-    clientId: document.getElementById('inv-client').value,
-    discount: document.getElementById('inv-discount').value,
-    tax: document.getElementById('inv-tax').value,
-    issueDate: document.getElementById('inv-issue').value,
-    dueDate: document.getElementById('inv-due').value,
-    notes: document.getElementById('inv-notes').value,
-    payStatus: _invoicePayStatus,
-    num: document.getElementById('invoiceNumPreview').textContent,
-    savedAt: Date.now(),
-  };
-}
-
-function saveInvoiceDraft() {
-  localStorage.setItem(INVOICE_DRAFT_KEY, JSON.stringify(getInvoiceDraft()));
-}
-
-function clearInvoiceDraft() {
-  localStorage.removeItem(INVOICE_DRAFT_KEY);
-  if (_invoiceDraftTimer) clearTimeout(_invoiceDraftTimer);
-  _invoiceDraftTimer = null;
-}
-
-function scheduleInvoiceAutosave() {
-  if (_invoiceDraftTimer) clearTimeout(_invoiceDraftTimer);
-  _invoiceDraftTimer = setTimeout(saveInvoiceDraft, 250);
-}
-
-function restoreInvoiceDraft() {
-  const raw = localStorage.getItem(INVOICE_DRAFT_KEY);
-  if (!raw) return;
-  try {
-    const draft = JSON.parse(raw);
-    if (draft.editId) document.getElementById('inv-editId').value = draft.editId;
-    if (draft.clientId) document.getElementById('inv-client').value = draft.clientId;
-    if (draft.discount !== undefined) document.getElementById('inv-discount').value = draft.discount;
-    if (draft.tax !== undefined) document.getElementById('inv-tax').value = draft.tax;
-    if (draft.issueDate) document.getElementById('inv-issue').value = draft.issueDate;
-    if (draft.dueDate) document.getElementById('inv-due').value = draft.dueDate;
-    if (draft.notes !== undefined) document.getElementById('inv-notes').value = draft.notes;
-    if (draft.payStatus) {
-      _invoicePayStatus = draft.payStatus;
-      document.getElementById('inv-paystatus').value = draft.payStatus;
-      document.querySelectorAll('.payment-opt').forEach(o => o.className = 'payment-opt');
-      const idx = draft.payStatus === 'unpaid' ? 1 : draft.payStatus === 'partial' ? 2 : 3;
-      const el = document.querySelector(`.payment-opt:nth-child(${idx})`);
-      if (el) el.className = `payment-opt selected-${draft.payStatus}`;
-    }
-    updateInvoicePreview();
-  } catch {}
+  else _invoices.unshift(saved);
 }
 
 function selectPayStatus(val, el) {
   _invoicePayStatus = val;
   document.getElementById('inv-paystatus').value = val;
-  document.querySelectorAll('.payment-opt').forEach(o => o.className = 'payment-opt');
-  el.className = `payment-opt selected-${val}`;
+  document.querySelectorAll('.payment-opt').forEach(o => (o.className = 'payment-opt'));
+  if (el) el.className = `payment-opt selected-${val}`;
   scheduleInvoiceAutosave();
 }
 
@@ -2678,21 +2624,82 @@ function nextInvoiceNum() {
   return prefix + String(next).padStart(4, '0');
 }
 
-function openInvoiceModal() {
+function getInvoiceDraft() {
+  return {
+    editId: document.getElementById('inv-editId').value || '',
+    clientId: document.getElementById('inv-client').value || '',
+    discount: document.getElementById('inv-discount').value || '0',
+    tax: document.getElementById('inv-tax').value || '0',
+    issueDate: document.getElementById('inv-issue').value || '',
+    dueDate: document.getElementById('inv-due').value || '',
+    notes: document.getElementById('inv-notes').value || '',
+    payStatus: _invoicePayStatus || 'unpaid',
+  };
+}
+
+function saveInvoiceDraft() {
+  localStorage.setItem(INVOICE_DRAFT_KEY, JSON.stringify(getInvoiceDraft()));
+}
+
+function clearInvoiceDraft() {
+  localStorage.removeItem(INVOICE_DRAFT_KEY);
+}
+
+function restoreInvoiceDraft() {
+  const raw = localStorage.getItem(INVOICE_DRAFT_KEY);
+  if (!raw) return;
+  try {
+    const d = JSON.parse(raw);
+    populateInvoiceClientSelect();
+
+    if (d.clientId) document.getElementById('inv-client').value = d.clientId;
+    document.getElementById('inv-discount').value = d.discount ?? '0';
+    document.getElementById('inv-tax').value = d.tax ?? '0';
+    document.getElementById('inv-issue').value = d.issueDate || '';
+    document.getElementById('inv-due').value = d.dueDate || '';
+    document.getElementById('inv-notes').value = d.notes || '';
+
+    _invoicePayStatus = d.payStatus || 'unpaid';
+    document.getElementById('inv-paystatus').value = _invoicePayStatus;
+    document.querySelectorAll('.payment-opt').forEach(o => (o.className = 'payment-opt'));
+    const idx = _invoicePayStatus === 'partial' ? 1 : _invoicePayStatus === 'paid' ? 2 : 0;
+    const btn = document.querySelectorAll('.payment-opt')[idx];
+    if (btn) btn.className = `payment-opt selected-${_invoicePayStatus}`;
+
+    document.getElementById('invoiceNumPreview').textContent = nextInvoiceNum();
+    updateInvoicePreview();
+  } catch {}
+}
+
+function scheduleInvoiceAutosave() {
+  clearTimeout(_invoiceDraftTimer);
+  _invoiceDraftTimer = setTimeout(saveInvoiceDraft, 200);
+}
+
+function openInvoiceModal(editId) {
+  if (editId) return editInvoice(editId);
+
   populateInvoiceClientSelect();
-  document.getElementById('inv-editId').value = '';
   document.getElementById('invoiceNumPreview').textContent = nextInvoiceNum();
-  document.getElementById('inv-client').value = '';
-  document.getElementById('inv-discount').value = 0;
-  document.getElementById('inv-tax').value = 0;
-  document.getElementById('inv-issue').value = '';
-  document.getElementById('inv-due').value = '';
+
+  const today = new Date().toISOString().split('T')[0];
+  const due = new Date();
+  due.setDate(due.getDate() + 14);
+
+  document.getElementById('inv-issue').value = today;
+  document.getElementById('inv-due').value = due.toISOString().split('T')[0];
+  document.getElementById('inv-discount').value = '0';
+  document.getElementById('inv-tax').value = '0';
   document.getElementById('inv-notes').value = '';
+  document.getElementById('inv-editId').value = '';
+  document.getElementById('inv-client').value = '';
   document.getElementById('inv-paystatus').value = 'unpaid';
+
   _invoicePayStatus = 'unpaid';
-  document.querySelectorAll('.payment-opt').forEach(o => o.className = 'payment-opt');
-  const first = document.querySelector('.payment-opt');
-  if (first) first.className = 'payment-opt selected-unpaid';
+  document.querySelectorAll('.payment-opt').forEach((o, i) => {
+    o.className = 'payment-opt' + (i === 0 ? ' selected-unpaid' : '');
+  });
+
   document.getElementById('invoicePreview').textContent = 'Pick a client to preview.';
   openModal('invoiceModal');
   restoreInvoiceDraft();
@@ -2702,28 +2709,42 @@ function populateInvoiceClientSelect() {
   ['inv-client', 'invoice-client-select'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.innerHTML = '<option value="">— Choose Client —</option>' + _clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    el.innerHTML =
+      '<option value="">— Choose Client —</option>' +
+      _clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
   });
 }
 
 function updateInvoicePreview() {
   const id = document.getElementById('inv-client').value;
   const box = document.getElementById('invoicePreview');
+
   if (!id) {
     box.textContent = 'Pick a client to preview.';
     return;
   }
+
   const c = _clientMap.get(id) || _clients.find(x => x.id === id);
   const products = _productsByClient.get(id) || _products.filter(p => p.clientId === id);
+
+  if (!c) {
+    box.textContent = 'Client not found.';
+    return;
+  }
+
   const disc = parseFloat(document.getElementById('inv-discount').value) || 0;
   const tax = parseFloat(document.getElementById('inv-tax').value) || 0;
-  const cur = c?.currency || 'USD';
-  const subtotal = products.reduce((s, p) => s + (p.charge ? convert(p.charge, p.chargeCur || 'BDT', cur) * (p.qty || 1) : 0), 0);
+  const cur = c.currency || 'USD';
+
+  const subtotal = products.reduce(
+    (s, p) => s + (p.charge ? convert(p.charge, p.chargeCur || 'BDT', cur) * (p.qty || 1) : 0),
+    0
+  );
   const discAmt = subtotal * disc / 100;
   const taxAmt = (subtotal - discAmt) * tax / 100;
   const total = subtotal - discAmt + taxAmt;
-  box.innerHTML = `<strong>${esc(c?.name || 'Client')}</strong> · ${products.length} products<br>Subtotal: ${fmt(subtotal, cur)}<br>${disc > 0 ? `Discount (${disc}%): -${fmt(discAmt, cur)}<br>` : ''}${tax > 0 ? `Tax (${tax}%): +${fmt(taxAmt, cur)}<br>` : ''}Total: ${fmt(total, cur)}`;
-  scheduleInvoiceAutosave();
+
+  box.innerHTML = `<strong>${esc(c.name)}</strong> · ${products.length} products<br>Subtotal: ${fmt(subtotal, cur)}<br>${disc > 0 ? `Discount (${disc}%): -${fmt(discAmt, cur)}<br>` : ''}${tax > 0 ? `Tax (${tax}%): +${fmt(taxAmt, cur)}<br>` : ''}Total: <strong>${fmt(total, cur)}</strong>`;
 }
 
 async function saveInvoice() {
@@ -2733,38 +2754,40 @@ async function saveInvoice() {
     return;
   }
 
-  rebuildFastMaps();
-
   const editId = document.getElementById('inv-editId').value;
   const c = _clientMap.get(clientId) || _clients.find(x => x.id === clientId);
+  if (!c) {
+    alert('Client not found.');
+    return;
+  }
+
   const products = _productsByClient.get(clientId) || _products.filter(p => p.clientId === clientId);
   const disc = parseFloat(document.getElementById('inv-discount').value) || 0;
   const tax = parseFloat(document.getElementById('inv-tax').value) || 0;
-  const cur = c?.currency || 'USD';
+  const cur = c.currency || 'USD';
 
-  const items = products.map(p => {
-    const price = p.charge ? convert(p.charge, p.chargeCur || 'BDT', cur) : 0;
-    return {
-      id: p.id,
-      name: p.name,
-      qty: p.qty || 1,
-      unit: p.unit || 'pcs',
-      price,
-    };
-  });
-
-  const subtotal = items.reduce((s, p) => s + (p.price * p.qty), 0);
+  const subtotal = products.reduce(
+    (s, p) => s + (p.charge ? convert(p.charge, p.chargeCur || 'BDT', cur) * (p.qty || 1) : 0),
+    0
+  );
   const discAmt = subtotal * disc / 100;
   const taxAmt = (subtotal - discAmt) * tax / 100;
   const total = subtotal - discAmt + taxAmt;
 
+  const items = products.map(p => ({
+    id: p.id,
+    name: p.name,
+    qty: p.qty || 1,
+    unit: p.unit || 'pcs',
+    price: p.charge ? convert(p.charge, p.chargeCur || 'BDT', cur) : 0,
+  }));
+
   const saved = {
     id: editId || uid(),
-    createdAt: editId ? (_invoices.find(i => i.id === editId)?.createdAt || Date.now()) : Date.now(),
-    clientId,
     num: editId ? (_invoices.find(i => i.id === editId)?.num || nextInvoiceNum()) : nextInvoiceNum(),
-    issueDate: document.getElementById('inv-issue').value || '',
-    dueDate: document.getElementById('inv-due').value || '',
+    clientId,
+    issueDate: document.getElementById('inv-issue').value,
+    dueDate: document.getElementById('inv-due').value,
     discount: disc,
     tax,
     notes: document.getElementById('inv-notes').value.trim(),
@@ -2775,13 +2798,13 @@ async function saveInvoice() {
     taxAmt,
     total,
     products: items,
+    createdAt: editId ? (_invoices.find(i => i.id === editId)?.createdAt || Date.now()) : Date.now(),
+    updatedAt: Date.now(),
   };
 
   await dbPut('invoices', saved);
   upsertInvoiceLocal(saved);
-
   clearInvoiceDraft();
-
   closeModal('invoiceModal');
   renderInvoices();
   showToast('Invoice saved 🧾');
@@ -2790,14 +2813,19 @@ async function saveInvoice() {
 function renderInvoices() {
   const q = (document.getElementById('invoiceSearch')?.value || '').toLowerCase();
   const pf = document.getElementById('invoicePayFilter')?.value || '';
-  let invs = _invoices.filter(i => {
-    const c = _clientMap.get(i.clientId) || _clients.find(x => x.id === i.clientId);
-    const matchQ = !q || (i.num || '').toLowerCase().includes(q) || (c && c.name.toLowerCase().includes(q));
-    const matchP = !pf || i.payStatus === pf;
-    return matchQ && matchP;
-  }).sort((a, b) => b.createdAt - a.createdAt);
+
+  const invs = _invoices
+    .filter(i => {
+      const c = _clientMap.get(i.clientId) || _clients.find(x => x.id === i.clientId);
+      const matchQ = !q || (i.num || '').toLowerCase().includes(q) || (c && c.name.toLowerCase().includes(q));
+      const matchP = !pf || i.payStatus === pf;
+      return matchQ && matchP;
+    })
+    .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
 
   const tbody = document.getElementById('invoicesTable');
+  if (!tbody) return;
+
   if (!invs.length) {
     tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state" style="padding:30px"><div class="empty-icon">🧾</div><p>No invoices yet.</p></div></td></tr>`;
     return;
@@ -2827,6 +2855,7 @@ function renderInvoices() {
 async function editInvoice(id) {
   const inv = _invoices.find(x => x.id === id);
   if (!inv) return;
+
   populateInvoiceClientSelect();
   document.getElementById('invoiceNumPreview').textContent = inv.num || '';
   document.getElementById('inv-client').value = inv.clientId || '';
@@ -2836,12 +2865,14 @@ async function editInvoice(id) {
   document.getElementById('inv-due').value = inv.dueDate || '';
   document.getElementById('inv-notes').value = inv.notes || '';
   document.getElementById('inv-editId').value = inv.id;
+  document.getElementById('inv-paystatus').value = inv.payStatus || 'unpaid';
+
   _invoicePayStatus = inv.payStatus || 'unpaid';
-  document.getElementById('inv-paystatus').value = _invoicePayStatus;
-  document.querySelectorAll('.payment-opt').forEach(o => o.className = 'payment-opt');
-  const idx = _invoicePayStatus === 'unpaid' ? 1 : _invoicePayStatus === 'partial' ? 2 : 3;
-  const el = document.querySelector(`.payment-opt:nth-child(${idx})`);
-  if (el) el.className = `payment-opt selected-${_invoicePayStatus}`;
+  document.querySelectorAll('.payment-opt').forEach(o => (o.className = 'payment-opt'));
+  const idx = _invoicePayStatus === 'partial' ? 1 : _invoicePayStatus === 'paid' ? 2 : 0;
+  const btn = document.querySelectorAll('.payment-opt')[idx];
+  if (btn) btn.className = `payment-opt selected-${_invoicePayStatus}`;
+
   updateInvoicePreview();
   openModal('invoiceModal');
 }
@@ -2849,7 +2880,7 @@ async function editInvoice(id) {
 async function deleteInvoice(id) {
   if (!confirm('Delete this invoice?')) return;
   await dbDelete('invoices', id);
-  _invoices = await dbGetAll('invoices');
+  _invoices = _invoices.filter(i => i.id !== id);
   renderInvoices();
 }
 
@@ -2867,13 +2898,31 @@ function printInvoice() {
   const disc = parseFloat(document.getElementById('inv-discount').value) || 0;
   const tax = parseFloat(document.getElementById('inv-tax').value) || 0;
   const cur = c.currency || 'USD';
-  const subtotal = products.reduce((s, p) => s + (p.charge ? convert(p.charge, p.chargeCur || 'BDT', cur) * (p.qty || 1) : 0), 0);
+  const subtotal = products.reduce(
+    (s, p) => s + (p.charge ? convert(p.charge, p.chargeCur || 'BDT', cur) * (p.qty || 1) : 0),
+    0
+  );
   const discAmt = subtotal * disc / 100;
   const taxAmt = (subtotal - discAmt) * tax / 100;
   const total = subtotal - discAmt + taxAmt;
   const num = document.getElementById('invoiceNumPreview').textContent;
   const notes = document.getElementById('inv-notes').value;
-  printInvoiceHTML({ num, client: c, products, disc, tax, subtotal, discAmt, taxAmt, total, cur, issueDate: document.getElementById('inv-issue').value, dueDate: document.getElementById('inv-due').value, notes });
+
+  printInvoiceHTML({
+    num,
+    client: c,
+    products,
+    disc,
+    tax,
+    subtotal,
+    discAmt,
+    taxAmt,
+    total,
+    cur,
+    issueDate: document.getElementById('inv-issue').value,
+    dueDate: document.getElementById('inv-due').value,
+    notes,
+  });
 }
 
 function printInvoiceById(id) {
@@ -2881,13 +2930,29 @@ function printInvoiceById(id) {
   if (!inv) return;
   const c = _clientMap.get(inv.clientId) || _clients.find(x => x.id === inv.clientId);
   if (!c) return;
-  printInvoiceHTML({ num: inv.num, client: c, products: inv.products || [], disc: inv.discount || 0, tax: inv.tax || 0, subtotal: inv.subtotal, discAmt: inv.discAmt, taxAmt: inv.taxAmt, total: inv.total, cur: inv.currency || 'USD', issueDate: inv.issueDate, dueDate: inv.dueDate, notes: inv.notes });
+
+  printInvoiceHTML({
+    num: inv.num,
+    client: c,
+    products: inv.products || [],
+    disc: inv.discount || 0,
+    tax: inv.tax || 0,
+    subtotal: inv.subtotal,
+    discAmt: inv.discAmt,
+    taxAmt: inv.taxAmt,
+    total: inv.total,
+    cur: inv.currency || 'USD',
+    issueDate: inv.issueDate,
+    dueDate: inv.dueDate,
+    notes: inv.notes,
+  });
 }
 
 function printInvoiceHTML(data) {
   const { num, client, products, disc, tax, subtotal, discAmt, taxAmt, total, cur, issueDate, dueDate, notes } = data;
   const biz = _SETTINGS;
   const rows = products.map(p => `<tr><td>${esc(p.name || p)}</td><td>${p.qty || 1} ${p.unit || 'pcs'}</td><td>${fmt(p.price || p.charge || 0, cur)}</td><td>${fmt((p.price || p.charge || 0) * (p.qty || 1), cur)}</td></tr>`).join('');
+
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice ${num}</title><style>
     body{font-family:system-ui,sans-serif;color:#0f172a;padding:40px;max-width:800px;margin:0 auto}
     h1{font-size:28px;font-weight:800;color:#2563eb}
@@ -2922,25 +2987,8 @@ function printInvoiceHTML(data) {
   ${notes ? `<div class="notes"><strong>Notes:</strong> ${esc(notes)}</div>` : ''}
   <script>window.print();<\/script>
   </body></html>`;
+
   const w = window.open('', '_blank');
-  w.document.write(html);
-  w.document.close();
-  printInvoiceHTML({
-    num: inv.num,
-    client: c,
-    products,
-    disc: inv.discount || 0,
-    tax: inv.tax || 0,
-    subtotal: inv.subtotal || 0,
-    discAmt: inv.discAmt || 0,
-    taxAmt: inv.taxAmt || 0,
-    total: inv.total || 0,
-    cur,
-    issueDate: inv.issueDate,
-    dueDate: inv.dueDate,
-    notes: inv.notes,
-  });
-}
   w.document.write(html);
   w.document.close();
 }
