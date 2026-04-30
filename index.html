@@ -1685,23 +1685,23 @@ checkStoredLicense();
     </div>
     <div class="modal-body">
       <div class="invoice-num-chip" id="invoiceNumPreview">INV-0001</div>
-      <div class="form-group"><label class="form-label">Client *</label><select class="form-select" id="inv-client" onchange="updateInvoicePreview()"><option value="">— Choose Client —</option></select></div>
+      <div class="form-group"><label class="form-label">Client *</label><select class="form-select" id="inv-client" scheduleInvoiceAutosave() onchange="updateInvoicePreview()"><option value="">— Choose Client —</option></select></div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Discount %</label><input type="number" class="form-input" id="inv-discount" min="0" max="100" value="0" oninput="updateInvoicePreview()"></div>
-        <div class="form-group"><label class="form-label">Tax %</label><input type="number" class="form-input" id="inv-tax" min="0" value="0" oninput="updateInvoicePreview()"></div>
+        <div class="form-group"><label class="form-label">Discount %</label><input type="number" class="form-input" id="inv-discount" scheduleInvoiceAutosave() min="0" max="100" value="0" oninput="updateInvoicePreview()"></div>
+        <div class="form-group"><label class="form-label">Tax %</label><input type="number" class="form-input" id="inv-tax" min="0" scheduleInvoiceAutosave() value="0" oninput="updateInvoicePreview()"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Issue Date</label><input type="date" class="form-input" id="inv-issue"></div>
-        <div class="form-group"><label class="form-label">Due Date</label><input type="date" class="form-input" id="inv-due"></div>
+        <div class="form-group"><label class="form-label">Issue Date</label><input type="date" class="form-input" id="inv-issue" onchange="scheduleInvoiceAutosave()"></div>
+        <div class="form-group"><label class="form-label">Due Date</label><input type="date" class="form-input" id="inv-due" onchange="scheduleInvoiceAutosave()"></div>
       </div>
       <div class="form-group"><label class="form-label">Payment Status</label>
         <div class="payment-status-select">
-          <div class="payment-opt selected-unpaid" onclick="selectPayStatus('unpaid',this)">Unpaid</div>
-          <div class="payment-opt" onclick="selectPayStatus('partial',this)">Partial</div>
-          <div class="payment-opt" onclick="selectPayStatus('paid',this)">Paid</div>
+          <div class="payment-opt selected-unpaid" onclick="selectPayStatus('unpaid',this) scheduleInvoiceAutosave()">Unpaid</div>
+          <div class="payment-opt" onclick="selectPayStatus('partial',this) scheduleInvoiceAutosave()">Partial</div>
+          <div class="payment-opt" onclick="selectPayStatus('paid',this) scheduleInvoiceAutosave()">Paid</div>
         </div>
       </div>
-      <div class="form-group"><label class="form-label">Notes / Terms</label><textarea class="form-textarea" id="inv-notes" placeholder="Payment terms, delivery notes…"></textarea></div>
+      <div class="form-group"><label class="form-label">Notes / Terms</label><textarea class="form-textarea" id="inv-notes" oninput="scheduleInvoiceAutosave()" placeholder="Payment terms, delivery notes…"></textarea></div>
       <div class="invoice-preview-box" id="invoicePreview">Pick a client to preview.</div>
       <input type="hidden" id="inv-paystatus" value="unpaid">
       <input type="hidden" id="inv-editId">
