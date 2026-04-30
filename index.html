@@ -1776,6 +1776,7 @@ async function persistSnapshot() {
     leads: await dbGetAll('leads'),
     invoices: await dbGetAll('invoices'),
     savedAt: new Date().toISOString()
+    rebuildFastMaps();
   };
   localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot));
 }
